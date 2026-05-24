@@ -75,7 +75,7 @@ The selection must support:
 | **Go** | Fast, simple, good concurrency | Smaller ecosystem, less maturity | When simplicity and performance are critical |
 | **C#/.NET** | Similar to Java, good Windows integration | Less cross-platform friendly | Windows-centric environments |
 
-**Final Decision**: ✅ **Java Spring Boot 2.7+** (LTS version for stability)
+**Final Decision**: ✅ **Java 21 LTS with Spring Boot 3.2+** (Latest LTS version with modern features)
 
 ---
 
@@ -183,8 +183,8 @@ Travel data has these characteristics:
 │                                                              │
 │  Frontend                  Backend              Database     │
 │  ─────────────────────────────────────────────────────────  │
-│  React 18+                 Java 11+            PostgreSQL    │
-│  TypeScript                Spring Boot 2.7+    13+           │
+│  React 18+                 Java 21 LTS         PostgreSQL    │
+│  TypeScript                Spring Boot 3.2+    13+           │
 │  Vite                      Spring Data JPA     Redis         │
 │  Tailwind CSS              Spring Security     (Cache)       │
 │  Redux Toolkit             Spring Cloud                      │
