@@ -9,7 +9,6 @@ import com.travelplanner.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -90,13 +89,7 @@ public class SearchHistoryService {
         }
         
         Pageable pageable = PageRequest.of(page, size);
-        List<SearchHistory> searches = searchHistoryRepository.findByUserIdOrderByCreatedAtDesc(userId);
-        
-        int start = (int) pageable.getOffset();
-        int end = Math.min(start + pageable.getPageSize(), searches.size());
-        
-        List<SearchHistory> pageContent = searches.subList(start, end);
-        return new PageImpl<>(pageContent, pageable, searches.size());
+        return searchHistoryRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable);
     }
     
     /**
@@ -114,6 +107,22 @@ public class SearchHistoryService {
                     log.warn("Search not found with id: {}", searchId);
                     return new ResourceNotFoundException("Search not found");
                 });
+    }
+    
+    public SearchHistory getSearchByIdForUser(Long userId, Long searchId) {
+        SearchHistory search = getSearchById(searchId);
+        if (!search.getUser().getId().equals(userId)) {
+            log.warn("User {} attempted to access search {} owned by {}", userId, searchId, search.getUser().getId());
+            throw new ResourceNotFoundException("Search not found");
+        }
+        return search;
+    }
+    
+    public List<SearchHistory> getSearchHistoryForUser(Long userId) {
+        if (!userRepository.existsById(userId)) {
+            throw new ResourceNotFoundException("User not found");
+        }
+        return searchHistoryRepository.findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(0, Integer.MAX_VALUE)).getContent();
     }
     
     /**

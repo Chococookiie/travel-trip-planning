@@ -74,12 +74,10 @@ public class PriceAlertService {
      * @param newTargetPrice the new target price
      * @return the updated price alert
      */
-    public PriceAlert updateAlert(Long alertId, BigDecimal newTargetPrice) {
+    public PriceAlert updateAlert(Long userId, Long alertId, BigDecimal newTargetPrice) {
         log.info("Updating price alert id: {}, new target price: {}", alertId, newTargetPrice);
         
-        PriceAlert alert = priceAlertRepository.findById(alertId)
-                .orElseThrow(() -> new ResourceNotFoundException("Alert not found"));
-        
+        PriceAlert alert = getAlertByIdForUser(userId, alertId);
         alert.setTargetPrice(newTargetPrice);
         PriceAlert updated = priceAlertRepository.save(alert);
         
@@ -90,16 +88,26 @@ public class PriceAlertService {
     /**
      * Delete price alert.
      *
+     * @param userId the user ID
      * @param alertId the alert ID
      */
-    public void deleteAlert(Long alertId) {
+    public void deleteAlert(Long userId, Long alertId) {
         log.info("Deleting price alert with id: {}", alertId);
         
-        PriceAlert alert = priceAlertRepository.findById(alertId)
-                .orElseThrow(() -> new ResourceNotFoundException("Alert not found"));
-        
+        PriceAlert alert = getAlertByIdForUser(userId, alertId);
         priceAlertRepository.delete(alert);
         log.info("Price alert deleted successfully");
+    }
+
+    public PriceAlert getAlertByIdForUser(Long userId, Long alertId) {
+        PriceAlert alert = priceAlertRepository.findById(alertId)
+                .orElseThrow(() -> new ResourceNotFoundException("Alert not found"));
+
+        if (!alert.getUser().getId().equals(userId)) {
+            log.warn("User {} attempted to access alert {} owned by {}", userId, alertId, alert.getUser().getId());
+            throw new ResourceNotFoundException("Alert not found");
+        }
+        return alert;
     }
     
     /**

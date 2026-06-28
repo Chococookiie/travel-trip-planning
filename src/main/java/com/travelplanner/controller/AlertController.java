@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import com.travelplanner.security.UserPrincipal;
 import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -45,11 +46,10 @@ public class AlertController {
             @RequestParam @NotNull @Positive BigDecimal targetPrice,
             Authentication authentication) {
         
-        log.info("Creating price alert for search id: {}, target price: {}", searchId, targetPrice);
-        
         Long userId = extractUserIdFromAuth(authentication);
-        PriceAlert alert = priceAlertService.createAlert(userId, searchId, searchType, targetPrice);
+        log.info("Creating price alert for user id={}, search id={}, target price={}", userId, searchId, targetPrice);
         
+        PriceAlert alert = priceAlertService.createAlert(userId, searchId, searchType, targetPrice);
         return new ResponseEntity<>(alert, HttpStatus.CREATED);
     }
     
@@ -66,11 +66,10 @@ public class AlertController {
             @RequestParam(required = false) Boolean active,
             Authentication authentication) {
         
-        log.debug("Fetching alerts for user, active={}", active);
-        
         Long userId = extractUserIdFromAuth(authentication);
-        List<PriceAlert> alerts = priceAlertService.getUserAlerts(userId, active);
+        log.debug("Fetching alerts for user id={}, active={}", userId, active);
         
+        List<PriceAlert> alerts = priceAlertService.getUserAlerts(userId, active);
         return ResponseEntity.ok(alerts);
     }
     
@@ -85,11 +84,13 @@ public class AlertController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PriceAlert> updateAlert(
             @PathVariable @NotNull Long id,
-            @RequestParam @NotNull @Positive BigDecimal newTargetPrice) {
+            @RequestParam @NotNull @Positive BigDecimal newTargetPrice,
+            Authentication authentication) {
         
+        Long userId = extractUserIdFromAuth(authentication);
         log.info("Updating price alert id: {}, new target price: {}", id, newTargetPrice);
         
-        PriceAlert updated = priceAlertService.updateAlert(id, newTargetPrice);
+        PriceAlert updated = priceAlertService.updateAlert(userId, id, newTargetPrice);
         return ResponseEntity.ok(updated);
     }
     
@@ -101,9 +102,11 @@ public class AlertController {
      */
     @DeleteMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<?> deleteAlert(@PathVariable @NotNull Long id) {
+    public ResponseEntity<?> deleteAlert(@PathVariable @NotNull Long id,
+                                         Authentication authentication) {
+        Long userId = extractUserIdFromAuth(authentication);
         log.info("Deleting price alert with id: {}", id);
-        priceAlertService.deleteAlert(id);
+        priceAlertService.deleteAlert(userId, id);
         return ResponseEntity.ok().body("Alert deleted successfully");
     }
     
@@ -131,7 +134,9 @@ public class AlertController {
      * @return user ID or null
      */
     private Long extractUserIdFromAuth(Authentication authentication) {
-        // TODO: Extract user ID from JWT claims or principal
-        return 1L; // Placeholder
+        if (authentication == null || !(authentication.getPrincipal() instanceof UserPrincipal principal)) {
+            return null;
+        }
+        return principal.getId();
     }
 }

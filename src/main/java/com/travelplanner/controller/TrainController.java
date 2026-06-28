@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import com.travelplanner.security.UserPrincipal;
 import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -110,7 +111,9 @@ public class TrainController {
      * @return user ID or null
      */
     private Long extractUserIdFromAuth(Authentication authentication) {
-        // TODO: Extract user ID from JWT claims or principal
-        return 1L; // Placeholder
+        if (authentication == null || !(authentication.getPrincipal() instanceof UserPrincipal principal)) {
+            return null;
+        }
+        return principal.getId();
     }
 }

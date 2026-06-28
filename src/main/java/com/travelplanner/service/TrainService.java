@@ -1,6 +1,7 @@
 package com.travelplanner.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.travelplanner.exception.ResourceNotFoundException;
 import com.travelplanner.model.TrainCache;
 import com.travelplanner.repository.TrainCacheRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -65,12 +66,18 @@ public class TrainService {
         
         // Save/update cache
         String trainDataJson = serializeTrainData(trains);
-        TrainCache trainCache = TrainCache.builder()
-                .fromLocation(fromLocation)
-                .toLocation(toLocation)
-                .departureDate(departureDate)
-                .data(trainDataJson)
-                .build();
+        TrainCache trainCache = cachedTrains.map(existing -> {
+                    existing.setData(trainDataJson);
+                    existing.setExpiresAt(LocalDate.now().atStartOfDay().plusDays(1));
+                    return existing;
+                })
+                .orElse(TrainCache.builder()
+                        .fromLocation(fromLocation)
+                        .toLocation(toLocation)
+                        .departureDate(departureDate)
+                        .data(trainDataJson)
+                        .expiresAt(LocalDate.now().atStartOfDay().plusDays(1))
+                        .build());
         
         trainCacheRepository.save(trainCache);
         log.info("Train cache updated with {} results", trains.size());
@@ -86,8 +93,16 @@ public class TrainService {
      */
     public Map<String, Object> getTrainDetails(String trainId) {
         log.debug("Fetching train details for train id: {}", trainId);
-        // TODO: Implement logic to fetch individual train details from cache or API
-        return new HashMap<>();
+        List<TrainCache> allCaches = trainCacheRepository.findAll();
+        for (TrainCache cache : allCaches) {
+            List<Map<String, Object>> trains = parseTrainCacheData(cache.getData());
+            for (Map<String, Object> train : trains) {
+                if (trainId.equals(String.valueOf(train.get("trainId")))) {
+                    return train;
+                }
+            }
+        }
+        throw new ResourceNotFoundException("Train not found: " + trainId);
     }
     
     /**

@@ -3,6 +3,7 @@ package com.travelplanner.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.travelplanner.dto.FlightSearchRequest;
 import com.travelplanner.dto.FlightSearchResponse;
+import com.travelplanner.exception.ResourceNotFoundException;
 import com.travelplanner.model.FlightCache;
 import com.travelplanner.repository.FlightCacheRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -63,13 +64,18 @@ public class FlightService {
         
         // Save/update cache
         String flightDataJson = serializeFlightData(flights);
-        FlightCache flightCache = FlightCache.builder()
-                .fromLocation(request.getFromLocation())
-                .toLocation(request.getToLocation())
-                .departureDate(request.getDepartureDate())
-                .data(flightDataJson)
-                .expiresAt(LocalDateTime.now().plusHours(24))
-                .build();
+        FlightCache flightCache = cachedFlights.map(existing -> {
+                    existing.setData(flightDataJson);
+                    existing.setExpiresAt(LocalDateTime.now().plusHours(24));
+                    return existing;
+                })
+                .orElse(FlightCache.builder()
+                        .fromLocation(request.getFromLocation())
+                        .toLocation(request.getToLocation())
+                        .departureDate(request.getDepartureDate())
+                        .data(flightDataJson)
+                        .expiresAt(LocalDateTime.now().plusHours(24))
+                        .build());
         
         flightCacheRepository.save(flightCache);
         log.info("Flight cache updated with {} results", flights.size());
@@ -85,8 +91,16 @@ public class FlightService {
      */
     public FlightSearchResponse getFlightDetails(String flightId) {
         log.debug("Fetching flight details for flight id: {}", flightId);
-        // TODO: Implement logic to fetch individual flight details from cache or API
-        return FlightSearchResponse.builder().build();
+        List<FlightCache> allCaches = flightCacheRepository.findAll();
+        for (FlightCache cache : allCaches) {
+            List<FlightSearchResponse> flights = parseFlightCacheData(cache.getData());
+            for (FlightSearchResponse flight : flights) {
+                if (flightId.equals(flight.getFlightId())) {
+                    return flight;
+                }
+            }
+        }
+        throw new ResourceNotFoundException("Flight not found: " + flightId);
     }
     
     /**
